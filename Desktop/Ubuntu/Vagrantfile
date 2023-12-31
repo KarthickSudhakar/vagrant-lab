@@ -1,0 +1,73 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# VM PARAMETERS
+
+VAGRANT_BOX = "ubuntu/jammy64"              # Vagrant box 
+VBOX_DISPLAY_NAME = "ubuntu-22.04-lxqt"          # VM name that you will see on virtualbox
+VBOX_HOSTNAME = "ubuntud.homelab.com"         # Hostname mapped to linux VM
+VBOX_RAM = 4500                             # VM ram size
+VBOX_CORE = 2                               # VM Core size
+VBOX_DISK_SIZE = "75GB"                     # VM Disk size
+
+# Shell provisioner to setup necessary tools and settings in VM #
+
+$ubuntu = <<-'UB1'
+
+  # Common OS Setup #
+  touch /home/vagrant/.hushlogin  
+
+  # Necessary system tools
+  sudo apt-get update && \
+  sudo apt-get -y install vim curl wget htop net-tools iputils-ping cowsay figlet screenfetch sysstat 
+
+  # Fish shell #
+  sudo apt-get install fish -y
+
+  # Python packages
+  sudo apt-get install python3-virtualenv python3-pip bpython -y
+
+  # Container #
+  sudo apt-get install podman -y && podman run hello
+
+  # Git installation & configuration #
+  sudo apt-get install git -y && \
+  git config --global user.name ""
+  git config --global user.email ""
+  git config --global core.editor "vim"
+  git config --global init.defaultBranch main
+
+  # lxqt
+  sudo apt-get install -y lxqt-core sddm
+UB1
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = VAGRANT_BOX
+  config.vm.box_check_update = false
+  config.vbguest.auto_update = false
+
+  # Sync folder
+  config.vm.synced_folder ".", "/vagrant", disabled: true     # Default synced folder
+  # config.vm.synced_folder <custom-path>, <mount>              # Custom synced folder
+
+  # Network Configuration #
+
+  config.vm.hostname = VBOX_HOSTNAME
+  config.vm.network "private_network", ip: "192.168.56.100"
+
+  # Storage Configuration #
+  config.vm.disk :disk, size: VBOX_DISK_SIZE, primary: true
+
+  # Virtualbox resource and folder Configuration #
+  config.vm.provider "virtualbox" do |rs|
+    rs.memory = VBOX_RAM
+    rs.cpus = VBOX_CORE
+    rs.customize ["modifyvm", :id, "--groups", "/DESKTOP"]
+    rs.name = VBOX_DISPLAY_NAME
+  end 
+
+  # Shell provisioner #
+  config.vm.provision "shell", inline: $ubuntu
+
+end
